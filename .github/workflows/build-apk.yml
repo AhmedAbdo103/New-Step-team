@@ -4,9 +4,6 @@ name: Build NEW STEP Android APK
 on:
   workflow_dispatch:
   push:
-    paths:
-      - 'NEW_STEP_Android_Project.zip'
-      - '.github/workflows/build-apk.yml'
 
 jobs:
   build:
@@ -16,10 +13,16 @@ jobs:
       - name: Get project
         uses: actions/checkout@v4
 
-      - name: Extract project
+      - name: Find and extract project
         run: |
+          ZIP_FILE=$(find . -type f -iname 'NEW_STEP_Android_Project.zip' | head -n 1)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "Project ZIP file not found"
+            find . -maxdepth 4 -type f
+            exit 1
+          fi
           mkdir project
-          unzip -q NEW_STEP_Android_Project.zip -d project
+          unzip -q "$ZIP_FILE" -d project
           PROJECT_DIR=$(find project -name settings.gradle -printf '%h\n' | head -n 1)
           echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
           test -n "$PROJECT_DIR"
