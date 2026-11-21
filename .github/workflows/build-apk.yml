@@ -10,22 +10,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Get project
+      - name: Get project files
         uses: actions/checkout@v4
 
-      - name: Find and extract project
+      - name: Extract Android project
         run: |
-          ZIP_FILE=$(find . -type f -iname 'NEW_STEP_Android_Project.zip' | head -n 1)
+          ZIP_FILE=$(find . -type f -name 'NEW_STEP_Android_Project.zip' | head -n 1)
+
           if [ -z "$ZIP_FILE" ]; then
-            echo "Project ZIP file not found"
+            echo "ERROR: Android project ZIP not found"
             find . -maxdepth 4 -type f
             exit 1
           fi
-          mkdir project
+
+          mkdir -p project
           unzip -q "$ZIP_FILE" -d project
+
           PROJECT_DIR=$(find project -name settings.gradle -printf '%h\n' | head -n 1)
-          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
-          test -n "$PROJECT_DIR"
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: settings.gradle not found"
+            find project -maxdepth 5 -type f
+            exit 1
+          fi
+
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -38,7 +47,7 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      - name: Build APK
+      - name: Build Android APK
         run: |
           cd "$PROJECT_DIR"
           gradle assembleDebug
@@ -47,4 +56,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: NEW-STEP-APK
-          path: project/**/build/outputs/apk/debug/*.apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
